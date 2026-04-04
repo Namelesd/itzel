@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Media {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  url         String
+  rss         String?
+  logo        String?
+  verified    Boolean      @default(false)
+  articles    Article[]
+  journalists Journalist[]
+  createdAt   DateTime     @default(now())
+}
+
+model Journalist {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  photo     String?
+  bio       String?
+  status    String    @default("active")
+  riskDate  DateTime?
+  riskNote  String?
+  fidelity  Float     @default(0)
+  mediaId   String?
+  media     Media?    @relation(fields: [mediaId], references: [id])
+  articles  Article[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Article {
+  id           String      @id @default(cuid())
+  title        String
+  url          String      @unique
+  excerpt      String?
+  content      String?
+  imageUrl     String?
+  publishedAt  DateTime
+  municipality String?
+  state        String?
+  lat          Float?
+  lng          Float?
+  category     String
+  sentiment    String?
+  yellowScore  Int?
+  aiSignals    Json?
+  aiAnalyzed   Boolean     @default(false)
+  journalistId String?
+  journalist   Journalist? @relation(fields: [journalistId], references: [id])
+  mediaId      String
+  media        Media       @relation(fields: [mediaId], references: [id])
+  createdAt    DateTime    @default(now())
+}
+
+model ScrapeLog {
+  id     String   @id @default(cuid())
+  source String
+  count  Int
+  errors Int      @default(0)
+  runAt  DateTime @default(now())
+}
