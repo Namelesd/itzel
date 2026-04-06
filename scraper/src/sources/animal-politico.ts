@@ -208,6 +208,72 @@ function limpiarTexto(texto: string): string {
     .trim()
     .slice(0, 300)
 }
+/**
+ * FUNCIÓN: generarSlug
+ * --------------------
+ * Convierte un nombre en un slug URL-friendly.
+ * "Carmen Aristegui" → "carmen-aristegui"
+ * "José López" → "jose-lopez"
+ *
+ * normalize('NFD') descompone los caracteres con tilde en
+ * su letra base + el acento por separado.
+ * El replace elimina los acentos y deja solo la letra base.
+ * Así "é" se convierte en "e" antes de hacer el slug.
+ */
+function generarSlug(nombre: string): string {
+  return nombre
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+}
+/**
+ * FUNCIÓN: obtenerOCrearPeriodista
+ * ---------------------------------
+ * Recibe el nombre del autor del artículo.
+ * Si ya existe en la DB → lo devuelve.
+ * Si no existe → lo crea con valores iniciales.
+ *
+ * upsert por slug: si dos artículos tienen el mismo autor,
+ * el segundo no crea un duplicado — encuentra el existente.
+ *
+ * El Índice de Fidelidad empieza en 0 y se recalcula después
+ * cuando tengamos suficientes artículos del periodista.
+ *
+ * mediaId: vinculamos al periodista con el medio donde
+ * publicó este artículo. Si publica en varios, se queda
+ * con el primero que se registró (update: {} no lo cambia).
+ */
+async function obtenerOCrearPeriodista(
+  nombre: string,
+  medioId: string
+): Promise<string | null> {
+  if (!nombre || nombre.trim().length < 3) return null
+
+  const nombreLimpio = nombre.trim()
+  const slug = generarSlug(nombreLimpio)
+
+  if (!slug) return null
+
+  try {
+    const periodista = await prisma.journalist.upsert({
+      where: { slug },
+      update: {},
+      create: {
+        name: nombreLimpio,
+        slug,
+        status: 'active',
+        fidelity: 0,
+        mediaId: medioId,
+      },
+    })
+    return periodista.id
+  } catch {
+    return null
+  }
+}
 
 async function scrapeFuente(fuente: typeof FUENTES[0]) {
   const parser = new Parser({
@@ -266,10 +332,22 @@ async function scrapeFuente(fuente: typeof FUENTES[0]) {
     const geo = detectarMunicipio(textoAnalisis)
     const categoria = detectarCategoria(textoAnalisis)
 
-    try {
-      await prisma.article.upsert({
-        where: { url: item.link },
-        update: {},
+   try {
+      /**
+       * OBTENER O CREAR PERIODISTA
+       * --------------------------
+       * Intentamos extraer el autor del RSS.
+       * Algunos medios usan dc:creator, otros usan author.
+       * Si ninguno está disponible, journalistId queda null.
+       */
+      const autorNombre = (item as any).creator || item.author || null
+      const journalistId = autorNombre
+        ? await obtenerOCrearPeriodista(autorNombre, medio.id)
+        : null
+
+    await prisma.article.upsert({
+  where: { url: item.link },
+  update: { journalistId },
         create: {
           title: titulo,
           url: item.link,
@@ -281,11 +359,13 @@ async function scrapeFuente(fuente: typeof FUENTES[0]) {
           lng: geo.lng,
           state: geo.state,
           mediaId: medio.id,
+          journalistId,
           aiAnalyzed: false,
         },
       })
       insertados++
-      console.log(`  ✓ ${titulo.slice(0, 70)}`)
+      const autorLog = autorNombre ? ` — ${autorNombre}` : ''
+      console.log(`  ✓ ${titulo.slice(0, 60)}${autorLog}`)
     } catch {
       duplicados++
     }
