@@ -139,37 +139,113 @@ const CATEGORIAS: Record<string, string> = {
 const MUNICIPIOS: Record<string, { lat: number; lng: number; state: string }> = {
   'Ciudad de México': { lat: 19.4326, lng: -99.1332, state: 'CDMX' },
   'CDMX': { lat: 19.4326, lng: -99.1332, state: 'CDMX' },
+  'Ciudad de Mexico': { lat: 19.4326, lng: -99.1332, state: 'CDMX' },
   'Guadalajara': { lat: 20.6597, lng: -103.3496, state: 'Jalisco' },
   'Zapopan': { lat: 20.7214, lng: -103.3916, state: 'Jalisco' },
   'Tlaquepaque': { lat: 20.6419, lng: -103.3117, state: 'Jalisco' },
   'Tonalá': { lat: 20.6236, lng: -103.2344, state: 'Jalisco' },
+  'Tonala': { lat: 20.6236, lng: -103.2344, state: 'Jalisco' },
   'Monterrey': { lat: 25.6866, lng: -100.3161, state: 'Nuevo León' },
+  'San Pedro Garza García': { lat: 25.6574, lng: -100.4019, state: 'Nuevo León' },
   'Puebla': { lat: 19.0414, lng: -98.2063, state: 'Puebla' },
   'Tijuana': { lat: 32.5149, lng: -117.0382, state: 'Baja California' },
+  'Mexicali': { lat: 32.6245, lng: -115.4523, state: 'Baja California' },
+  'Ensenada': { lat: 31.8667, lng: -116.5960, state: 'Baja California' },
   'Mérida': { lat: 20.9674, lng: -89.5926, state: 'Yucatán' },
+  'Merida': { lat: 20.9674, lng: -89.5926, state: 'Yucatán' },
   'Cancún': { lat: 21.1619, lng: -86.8515, state: 'Quintana Roo' },
+  'Cancun': { lat: 21.1619, lng: -86.8515, state: 'Quintana Roo' },
+  'Playa del Carmen': { lat: 20.6296, lng: -87.0739, state: 'Quintana Roo' },
   'Veracruz': { lat: 19.1738, lng: -96.1342, state: 'Veracruz' },
   'Xalapa': { lat: 19.5438, lng: -96.9102, state: 'Veracruz' },
-  'Culiacán': { lat: 24.8091, lng: -107.394, state: 'Sinaloa' },
-  'Mazatlán': { lat: 23.2494, lng: -106.411, state: 'Sinaloa' },
-  'Chihuahua': { lat: 28.6329, lng: -106.069, state: 'Chihuahua' },
-  'Juárez': { lat: 31.6904, lng: -106.424, state: 'Chihuahua' },
+  'Coatzacoalcos': { lat: 18.1500, lng: -94.4333, state: 'Veracruz' },
+  'Culiacán': { lat: 24.8091, lng: -107.3940, state: 'Sinaloa' },
+  'Culiacan': { lat: 24.8091, lng: -107.3940, state: 'Sinaloa' },
+  'Mazatlán': { lat: 23.2494, lng: -106.4111, state: 'Sinaloa' },
+  'Mazatlan': { lat: 23.2494, lng: -106.4111, state: 'Sinaloa' },
+  'Los Mochis': { lat: 25.7940, lng: -108.9891, state: 'Sinaloa' },
+  'Chihuahua': { lat: 28.6329, lng: -106.0691, state: 'Chihuahua' },
+  'Juárez': { lat: 31.6904, lng: -106.4245, state: 'Chihuahua' },
+  'Juarez': { lat: 31.6904, lng: -106.4245, state: 'Chihuahua' },
+  'Ciudad Juárez': { lat: 31.6904, lng: -106.4245, state: 'Chihuahua' },
   'Oaxaca': { lat: 17.0732, lng: -96.7266, state: 'Oaxaca' },
   'Acapulco': { lat: 16.8531, lng: -99.8237, state: 'Guerrero' },
-  'Morelia': { lat: 19.706, lng: -101.195, state: 'Michoacán' },
-  'León': { lat: 21.1221, lng: -101.682, state: 'Guanajuato' },
-  'Saltillo': { lat: 25.4232, lng: -100.996, state: 'Coahuila' },
-  'Torreón': { lat: 25.5428, lng: -103.418, state: 'Coahuila' },
-  'Hermosillo': { lat: 29.0729, lng: -110.955, state: 'Sonora' },
-  'Mexicali': { lat: 32.6245, lng: -115.452, state: 'Baja California' },
-  'Aguascalientes': { lat: 21.8818, lng: -102.291, state: 'Aguascalientes' },
-  'Querétaro': { lat: 20.5888, lng: -100.389, state: 'Querétaro' },
-  'San Luis Potosí': { lat: 22.1565, lng: -100.985, state: 'San Luis Potosí' },
+  'Chilpancingo': { lat: 17.5506, lng: -99.5001, state: 'Guerrero' },
+  'Morelia': { lat: 19.7060, lng: -101.1950, state: 'Michoacán' },
+  'Uruapan': { lat: 19.4192, lng: -102.0632, state: 'Michoacán' },
+  'León': { lat: 21.1221, lng: -101.6824, state: 'Guanajuato' },
+  'Leon': { lat: 21.1221, lng: -101.6824, state: 'Guanajuato' },
+  'Irapuato': { lat: 20.6755, lng: -101.3554, state: 'Guanajuato' },
+  'Celaya': { lat: 20.5236, lng: -100.8161, state: 'Guanajuato' },
+  'Guanajuato': { lat: 21.0190, lng: -101.2574, state: 'Guanajuato' },
+  'Saltillo': { lat: 25.4232, lng: -100.9963, state: 'Coahuila' },
+  'Torreón': { lat: 25.5428, lng: -103.4180, state: 'Coahuila' },
+  'Torreon': { lat: 25.5428, lng: -103.4180, state: 'Coahuila' },
+  'Hermosillo': { lat: 29.0729, lng: -110.9559, state: 'Sonora' },
+  'Ciudad Obregón': { lat: 27.4863, lng: -109.9401, state: 'Sonora' },
+  'Aguascalientes': { lat: 21.8818, lng: -102.2916, state: 'Aguascalientes' },
+  'Querétaro': { lat: 20.5888, lng: -100.3899, state: 'Querétaro' },
+  'Queretaro': { lat: 20.5888, lng: -100.3899, state: 'Querétaro' },
+  'San Luis Potosí': { lat: 22.1565, lng: -100.9855, state: 'San Luis Potosí' },
+  'San Luis Potosi': { lat: 22.1565, lng: -100.9855, state: 'San Luis Potosí' },
   'Toluca': { lat: 19.2826, lng: -99.6557, state: 'Estado de México' },
-  'Durango': { lat: 24.0277, lng: -104.653, state: 'Durango' },
-  'Tepic': { lat: 21.5042, lng: -104.895, state: 'Nayarit' },
+  'Ecatepec': { lat: 19.6012, lng: -99.0598, state: 'Estado de México' },
+  'Nezahualcóyotl': { lat: 19.4013, lng: -99.0149, state: 'Estado de México' },
+  'Durango': { lat: 24.0277, lng: -104.6532, state: 'Durango' },
+  'Tepic': { lat: 21.5042, lng: -104.8945, state: 'Nayarit' },
   'Tuxtla Gutiérrez': { lat: 16.7521, lng: -93.1151, state: 'Chiapas' },
+  'Tuxtla Gutierrez': { lat: 16.7521, lng: -93.1151, state: 'Chiapas' },
+  'San Cristóbal de las Casas': { lat: 16.7370, lng: -92.6376, state: 'Chiapas' },
   'Villahermosa': { lat: 17.9869, lng: -92.9303, state: 'Tabasco' },
+  'Campeche': { lat: 19.8301, lng: -90.5349, state: 'Campeche' },
+  'Chetumal': { lat: 18.5001, lng: -88.2961, state: 'Quintana Roo' },
+  'Colima': { lat: 19.2452, lng: -103.7241, state: 'Colima' },
+  'Manzanillo': { lat: 19.0515, lng: -104.3149, state: 'Colima' },
+  'La Paz': { lat: 24.1426, lng: -110.3128, state: 'Baja California Sur' },
+  'Los Cabos': { lat: 22.8905, lng: -109.9167, state: 'Baja California Sur' },
+  'Zacatecas': { lat: 22.7709, lng: -102.5832, state: 'Zacatecas' },
+  'Cuernavaca': { lat: 18.9242, lng: -99.2216, state: 'Morelos' },
+  'Pachuca': { lat: 20.1011, lng: -98.7591, state: 'Hidalgo' },
+  'Tlaxcala': { lat: 19.3182, lng: -98.2375, state: 'Tlaxcala' },
+  'Tapachula': { lat: 14.9048, lng: -92.2622, state: 'Chiapas' },
+  'Matamoros': { lat: 25.8691, lng: -97.5027, state: 'Tamaulipas' },
+  'Reynosa': { lat: 26.0921, lng: -98.2766, state: 'Tamaulipas' },
+  'Nuevo Laredo': { lat: 27.4760, lng: -99.5161, state: 'Tamaulipas' },
+  'Tampico': { lat: 22.2553, lng: -97.8686, state: 'Tamaulipas' },
+}
+const ESTADOS: Record<string, { lat: number; lng: number }> = {
+  'Aguascalientes': { lat: 21.8818, lng: -102.2916 },
+  'Baja California': { lat: 30.8406, lng: -115.2838 },
+  'Baja California Sur': { lat: 25.0000, lng: -111.3333 },
+  'Campeche': { lat: 19.0000, lng: -90.5000 },
+  'Chiapas': { lat: 16.7500, lng: -92.6333 },
+  'Chihuahua': { lat: 28.6329, lng: -106.0691 },
+  'Coahuila': { lat: 27.0000, lng: -102.0000 },
+  'Colima': { lat: 19.2452, lng: -103.7241 },
+  'Durango': { lat: 24.0277, lng: -104.6532 },
+  'Estado de Mexico': { lat: 19.4969, lng: -99.7233 },
+  'Guanajuato': { lat: 21.0190, lng: -101.2574 },
+  'Guerrero': { lat: 17.4392, lng: -99.5451 },
+  'Hidalgo': { lat: 20.1011, lng: -98.7591 },
+  'Jalisco': { lat: 20.6597, lng: -103.3496 },
+  'Michoacan': { lat: 19.5665, lng: -101.7068 },
+  'Morelos': { lat: 18.9242, lng: -99.2216 },
+  'Nayarit': { lat: 21.7514, lng: -104.8455 },
+  'Nuevo Leon': { lat: 25.5922, lng: -99.9962 },
+  'Oaxaca': { lat: 17.0732, lng: -96.7266 },
+  'Puebla': { lat: 19.0414, lng: -98.2063 },
+  'Queretaro': { lat: 20.5888, lng: -100.3899 },
+  'Quintana Roo': { lat: 19.1817, lng: -88.4791 },
+  'San Luis Potosi': { lat: 22.1565, lng: -100.9855 },
+  'Sinaloa': { lat: 24.8091, lng: -107.3940 },
+  'Sonora': { lat: 29.0729, lng: -110.9559 },
+  'Tabasco': { lat: 17.9869, lng: -92.9303 },
+  'Tamaulipas': { lat: 24.2669, lng: -98.8363 },
+  'Tlaxcala': { lat: 19.3182, lng: -98.2375 },
+  'Veracruz': { lat: 19.1738, lng: -96.1342 },
+  'Yucatan': { lat: 20.9674, lng: -89.5926 },
+  'Zacatecas': { lat: 22.7709, lng: -102.5832 },
+  'CDMX': { lat: 19.4326, lng: -99.1332 },
 }
 
 function detectarCategoria(texto: string): string {
@@ -180,12 +256,29 @@ function detectarCategoria(texto: string): string {
   return 'civil'
 }
 
-function detectarMunicipio(texto: string) {
+function detectarUbicacion(texto: string) {
   for (const [municipio, coords] of Object.entries(MUNICIPIOS)) {
     if (texto.includes(municipio)) {
-      return { municipality: municipio, ...coords }
+      return {
+        municipality: municipio,
+        lat: coords.lat,
+        lng: coords.lng,
+        state: coords.state,
+      }
     }
   }
+
+  for (const [estado, coords] of Object.entries(ESTADOS)) {
+    if (texto.includes(estado)) {
+      return {
+        municipality: null,
+        lat: coords.lat,
+        lng: coords.lng,
+        state: estado,
+      }
+    }
+  }
+
   return { municipality: null, lat: null, lng: null, state: null }
 }
 
@@ -329,7 +422,7 @@ async function scrapeFuente(fuente: typeof FUENTES[0]) {
       : null
 
     const textoAnalisis = `${titulo} ${excerpt ?? ''}`
-    const geo = detectarMunicipio(textoAnalisis)
+    const geo = detectarUbicacion(textoAnalisis)
     const categoria = detectarCategoria(textoAnalisis)
 
    try {
@@ -347,7 +440,11 @@ async function scrapeFuente(fuente: typeof FUENTES[0]) {
 
     await prisma.article.upsert({
   where: { url: item.link },
-  update: { journalistId },
+  update: {  journalistId,
+    lat: geo.lat,
+    lng: geo.lng,
+    municipality: geo.municipality,
+    state: geo.state, },
         create: {
           title: titulo,
           url: item.link,
