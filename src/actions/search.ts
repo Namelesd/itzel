@@ -61,7 +61,7 @@ export async function searchArticles(params: SearchParams) {
    * page 3 → skip 40, take 20 (artículos 41-60)
    */
   const ITEMS_PER_PAGE = 20
-  const skip = (page - 1) * ITEMS_PER_PAGE
+  const skip = (page - 1) * ITEMS_PER_PAGE  
 
   /**
    * CONSTRUCCIÓN DEL FILTRO (WHERE CLAUSE)
@@ -72,35 +72,24 @@ export async function searchArticles(params: SearchParams) {
    * AND: todos los filtros deben cumplirse al mismo tiempo.
    * contains + mode insensitive: búsqueda sin importar mayúsculas.
    */
-  const where = {
+const where = {
     AND: [
       query
         ? {
             OR: [
               { title: { contains: query, mode: 'insensitive' as const } },
               { excerpt: { contains: query, mode: 'insensitive' as const } },
+              { municipality: { contains: query, mode: 'insensitive' as const } },
+              { state: { contains: query, mode: 'insensitive' as const } },
             ],
           }
         : {},
       category ? { category } : {},
-      state ? { state } : {},
-      municipality ? { municipality } : {},
+      state ? { state: { contains: state, mode: 'insensitive' as const } } : {},
+      municipality ? { municipality: { contains: municipality, mode: 'insensitive' as const } } : {},
     ],
   }
 
-  /**
-   * CONSULTA EN PARALELO
-   * --------------------
-   * Promise.all ejecuta las dos consultas AL MISMO TIEMPO.
-   * Si las hiciéramos secuenciales, tardaría el doble.
-   *
-   * findMany: trae los artículos con paginación
-   * count: cuenta el total para saber cuántas páginas hay
-   *
-   * include: { journalist, media } trae también los datos
-   * relacionados del periodista y el medio en la misma consulta.
-   * Sin esto tendríamos que hacer consultas extra para cada artículo.
-   */
   const [articles, total] = await Promise.all([
     prisma.article.findMany({
       where,
@@ -115,15 +104,6 @@ export async function searchArticles(params: SearchParams) {
     prisma.article.count({ where }),
   ])
 
-  /**
-   * RESULTADO
-   * ---------
-   * Devolvemos un objeto con:
-   * - articles: los artículos de esta página
-   * - total: total de resultados (para mostrar "X resultados")
-   * - pages: total de páginas (para la paginación)
-   * - page: página actual
-   */
   return {
     articles,
     total,
