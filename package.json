@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "scraper": "tsx --tsconfig tsconfig.json scraper/src/sources/animal-politico.ts",
-    "fidelity": "tsx recalcular-fidelidad.ts"
+    "fidelity": "tsx recalcular-fidelidad.ts",
+    "analyze": "tsx analizar-articulos.ts"
 
 
   },
@@ -38,4 +39,6 @@
     "tsx": "^4.21.0",
     "typescript": "^5"
   }
+
+  
 }

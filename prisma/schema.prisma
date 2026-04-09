@@ -21,26 +21,27 @@ model Media {
 }
 
 model Journalist {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String    @unique
-  photo     String?
-  bio       String?
-  status    String    @default("active")
-  riskDate  DateTime?
-  riskNote  String?
-  fidelity  Float     @default(0)
-  mediaId   String?
-  media     Media?    @relation(fields: [mediaId], references: [id])
-  articles  Article[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  photo       String?
+  bio         String?
+  isEditorial Boolean   @default(false)
+  editorialDesc String? 
+  status      String    @default("active")
+  riskDate    DateTime?
+  riskNote    String?
+  fidelity    Float     @default(0)
+  mediaId     String
+  media       Media     @relation(fields: [mediaId], references: [id])
+  articles    Article[]
+  createdAt   DateTime  @default(now())
 }
 
 model Article {
-  id           String      @id @default(cuid())
+  id           String    @id @default(cuid())
   title        String
-  url          String      @unique
+  url          String    @unique
   excerpt      String?
   content      String?
   imageUrl     String?
@@ -49,16 +50,17 @@ model Article {
   state        String?
   lat          Float?
   lng          Float?
-  category     String
+  category     String    @default("civil")
   sentiment    String?
-  yellowScore  Int?
+  yellowScore  Float?
+  fidelityScore Float?
   aiSignals    Json?
-  aiAnalyzed   Boolean     @default(false)
+  aiAnalyzed   Boolean   @default(false)
   journalistId String?
   journalist   Journalist? @relation(fields: [journalistId], references: [id])
   mediaId      String
-  media        Media       @relation(fields: [mediaId], references: [id])
-  createdAt    DateTime    @default(now())
+  media        Media      @relation(fields: [mediaId], references: [id])
+  createdAt    DateTime   @default(now())
 }
 
 model ScrapeLog {

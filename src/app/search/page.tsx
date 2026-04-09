@@ -1,8 +1,11 @@
-import { searchArticles, getCategories } from '@/actions/search'
+import { searchArticles, getCategories, searchJournalists, } from '@/actions/search'
+import MediaDropdown from '@/components/MediaDropdown'
+
 import ArticleCard from '@/components/ArticleCard'
 
 type PageProps = {
-  searchParams: Promise<{ query?: string; category?: string; page?: string }>
+  searchParams: Promise<{ query?: string; category?: string; page?: string; media?: string }>
+
 }
 
 const LABELS: Record<string, string> = {
@@ -18,10 +21,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const params = await searchParams
   const query = params.query ?? ''
   const category = params.category
+  const media = params.media
   const page = parseInt(params.page ?? '1', 10)
 
   const [results, categories] = await Promise.all([
-    searchArticles({ query, category, page }),
+    searchArticles({ query, category, page, media }),
     getCategories(),
   ])
 
@@ -62,11 +66,35 @@ export default async function SearchPage({ searchParams }: PageProps) {
             : results.total + ' artículos encontrados'}
           {query && <span> para <strong style={{ color: '#1a1a1e' }}>"{query}"</strong></span>}
         </p>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <a href="/journalist" style={{ fontSize: '12px', color: '#888780', textDecoration: 'none' }}>Periodistas →</a>
-          <a href="/map" style={{ fontSize: '12px', color: '#888780', textDecoration: 'none' }}>Mapa →</a>
-        </div>
+       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+  <MediaDropdown mediaList={results.mediaList ?? []} query={query} />
+  <a href="/journalist" style={{ fontSize: '12px', color: '#888780', textDecoration: 'none' }}>Periodistas →</a>
+  <a href="/map" style={{ fontSize: '12px', color: '#888780', textDecoration: 'none' }}>Mapa →</a>
+</div>
       </div>
+
+{media && (
+  <div style={{ background: '#fff', border: '0.5px solid #e0ddd6', borderRadius: '12px', padding: '12px 16px', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f5f0e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 500, color: '#8b7355' }}>
+        {(results.articles[0]?.media.name[0] ?? media[0]).toUpperCase()}
+      </div>
+      <div>
+        <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1e' }}>{results.articles[0]?.media.name ?? media}</p>
+        <p style={{ fontSize: '11px', color: '#888780' }}>{results.total} artículos{query ? ` sobre "${query}"` : ''}</p>
+      </div>
+    </div>
+    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+      {query && (
+        <a href={'/search?media=' + media} style={{ fontSize: '12px', padding: '5px 14px', borderRadius: '20px', border: '0.5px solid #d3d1c7', textDecoration: 'none', color: '#5f5e5a', background: '#fff' }}>Ver todos los artículos de este medio</a>
+      )}
+      <a href={query ? '/search?query=' + query : '/search'} style={{ fontSize: '12px', padding: '5px 14px', borderRadius: '20px', border: '0.5px solid #a32d2d', textDecoration: 'none', color: '#a32d2d', background: '#fcebeb' }}>× Quitar filtro</a>
+    </div>
+  </div>
+)}
+
+
+
 
       {results.articles.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '4rem 0', color: '#888780' }}>
