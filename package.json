@@ -9,7 +9,8 @@
     "lint": "eslint",
     "scraper": "tsx --tsconfig tsconfig.json scraper/src/sources/animal-politico.ts",
     "fidelity": "tsx recalcular-fidelidad.ts",
-    "analyze": "tsx analizar-articulos.ts"
+    "analyze": "tsx analizar-articulos.ts",
+    "backfill": "tsx backfill-fidelity.ts"
 
 
   },

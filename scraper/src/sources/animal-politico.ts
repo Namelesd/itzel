@@ -453,6 +453,12 @@ function limpiarTexto(texto: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
     .replace(/\uFFFD/g, '')
+    // Corrección de Latin-1 mal interpretado como UTF-8
+    .replace(/â€™/g, "'").replace(/â€œ/g, '"').replace(/â€/g, '"')
+    .replace(/Ã©/g, 'é').replace(/Ã³/g, 'ó').replace(/Ã­/g, 'í')
+    .replace(/Ã¡/g, 'á').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ')
+    .replace(/Ã‰/g, 'É').replace(/Ã"/g, 'Ó').replace(/Ã/g, 'Á')
+    .replace(/\uFFFD/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 300)
@@ -651,8 +657,8 @@ const categoria = detectarCategoria(textoAnalisis)
  * Lo guardamos directamente en el artículo.
  */
 const { calcularFidelidad } = await import('../../../src/lib/fidelity')
-const fidelityResult = textoAnalisis.length > 80
-  ? calcularFidelidad(titulo, contenidoCompleto ?? excerpt)
+const fidelityResult = contenidoCompleto && contenidoCompleto.length > 80
+  ? calcularFidelidad(titulo, contenidoCompleto)
   : null
 
     /**
