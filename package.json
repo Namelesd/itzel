@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "scraper": "tsx --tsconfig tsconfig.json scraper/src/sources/animal-politico.ts"
+    "scraper": "tsx --tsconfig tsconfig.json scraper/src/sources/animal-politico.ts",
+    "fidelity": "tsx recalcular-fidelidad.ts"
+
 
   },
   "dependencies": {
