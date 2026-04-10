@@ -590,8 +590,8 @@ const contentType = response.headers.get('content-type') ?? ''
 const isLatin1 = /charset=iso-8859-1|charset=latin-1/i.test(contentType)
 
 const buffer = await response.arrayBuffer()
-const rawText = new TextDecoder(isLatin1 ? 'iso-8859-1' : 'utf-8').decode(buffer)const cleanText = rawText
-  .replace(/^\uFEFF/, '')
+const rawText = new TextDecoder(isLatin1 ? 'iso-8859-1' : 'utf-8').decode(buffer)
+const cleanText = rawText  .replace(/^\uFEFF/, '')
   .replace(/^[\s\S]*?(?=<\?xml|<rss|<feed)/, '')
   // Entidades HTML inválidas → &amp;
   .replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;')
@@ -739,10 +739,10 @@ const aiSignals = Array.isArray(fidelityResult?.signals)
     excerpt,
     publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
     category: categoria,
-    municipality: geo.municipality,
-    lat: geo.lat,
-    lng: geo.lng,
-    state: geo.state,
+    municipality: geo.municipality ?? null,
+    lat: geo.lat ?? null,
+    lng: geo.lng ?? null,
+    state: geo.state ?? null,
     mediaId: medio.id,
     journalistId,
     fidelityScore: fidelityResult?.total ?? null,
