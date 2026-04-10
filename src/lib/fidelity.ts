@@ -38,16 +38,29 @@ export type FidelityBreakdown = {
  */
 
 const FUENTES_EXPLICITAS = [
+  // Fuentes de autoridad formal — ya existentes
   /según\s+(?:el|la|los|las|un|una)?\s*(?:secretar|minister|president|director|doctor|dr\.|lic\.|ing\.|senador|diputado|gobernador|alcalde|vocero|portavoz)/gi,
   /(?:afirmó|declaró|confirmó|informó|señaló|explicó|detalló|precisó|aseguró|sostuvo)\s+\w+/gi,
   /(?:en\s+un\s+)?(?:comunicado|boletín|informe|reporte|documento|dictamen|resolución)/gi,
   /(?:datos|cifras|estadísticas)\s+(?:del?|de\s+la|oficiales?\s+de)/gi,
+
+  // Fuentes de sociedad civil y actores colectivos
+  // Detecta "manifestantes señalaron", "conductores denunciaron", etc.
+  /(?:manifestantes?|protestantes?|conductores?|choferes?|trabajadores?|vecinos?|habitantes?|comerciantes?|estudiantes?|médicos?|enfermeros?|maestros?|docentes?)\s+(?:señalaron|denunciaron|exigieron|afirmaron|declararon|indicaron|explicaron|protestaron|demandaron)/gi,
+
+  // Organizaciones civiles y colectivos
+  /(?:organización|colectivo|asociación|sindicato|gremio|cámara|federación|unión\s+de)\s+[A-ZÁÉÍÓÚÑ]/gi,
+
+  // Testimonios directos
+  /(?:testigos?|víctimas?|afectados?|familiares?)\s+(?:del?|de\s+la)?\s*(?:caso|incidente|hecho|suceso|ataque|accidente)/gi,
+
+  // Fuentes institucionales ampliadas
+  /(?:según|de\s+acuerdo\s+con)\s+(?:el|la|los|las)?\s*(?:IMSS|ISSSTE|INEGI|SAT|UNAM|IPN|CFE|Pemex|Banxico|CNDH|INE|CONACYT|SEP|SSA|SEDENA|SEMAR)/gi,
 ]
 
 const CITAS_TEXTUALES = [
-  /"[^"]{15,}"/g,
-  /«[^»]{15,}»/g,
-  /['"][^'"]{15,}['"]/g,
+  /"[^"]{20,}"/g,
+  /«[^»]{20,}»/g,
 ]
 
 const LENGUAJE_AMBIGUO = [
@@ -61,6 +74,9 @@ const ADJETIVOS_CARGADOS = [
   /\b(?:nefasto|corrupto|deleznable|infame|traidor|criminal|maldito|terrible|desastroso|catastrófico)\b/gi,
   /\b(?:glorioso|magnífico|extraordinario|brillante|excepcional|heroico|impecable)\b/gi,
   /\b(?:populacho|chusma|ignorante|fanático|radical|extremista)\b/gi,
+  // Lenguaje de parcialidad positiva hacia figuras políticas
+  // común en periodismo de tendencia oficialista
+  /\b(?:destacó\s+los?\s+logros?|exitosa?\s+gestión|gran\s+avance|histórico\s+logro|transformación\s+exitosa|resultados?\s+positivos?\s+de|beneficios?\s+que\s+trajo|legado\s+positivo)\b/gi,
 ]
 
 const MARCADORES_CONTEXTO = [
@@ -73,7 +89,14 @@ const MARCADORES_CONTRASTE = [
   /\b(?:negó|rechazó|desmintió|refutó|contradijo)\b/gi,
   /\b(?:versión\s+(?:contraria|diferente|distinta)|perspectiva\s+(?:contraria|diferente))\b/gi,
 ]
+// Detectores de las preguntas básicas del periodismo
+const DETECTOR_QUIEN = /(?:[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s){1,3}(?:afirmó|declaró|confirmó|informó|señaló|dijo|explicó|aseguró)|(?:el|la|los|las)\s+(?:secretar|minister|president|director|gobernador|alcalde|diputado|senador)/gi
 
+const DETECTOR_CUANDO = /\b(?:este\s+(?:lunes|martes|miércoles|jueves|viernes|sábado|domingo)|ayer|hoy|mañana|\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+\d{4})?|\d{4})\b/gi
+
+const DETECTOR_DONDE = /\b(?:en\s+(?:la\s+ciudad\s+de|el\s+estado\s+de|el\s+municipio\s+de)?)\s*[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+/gi
+
+const DETECTOR_QUE = /\b(?:para|con\s+el\s+fin\s+de|con\s+el\s+objetivo\s+de|a\s+causa\s+de|debido\s+a|como\s+resultado\s+de|tras|después\s+de|luego\s+de)\b/gi
 /**
  * FUNCIÓN AUXILIAR: contarCoincidencias
  * --------------------------------------
@@ -168,11 +191,24 @@ export function calcularFidelidad(
 
   const regexFechas = /\b\d{1,2}\s+de\s+\w+|\b\d{4}\b|\bayer\b|\bhoy\b|\besta\s+semana\b/gi
   const regexCifras = /\b\d+(?:\.\d+)?(?:\s*(?:millones?|miles?|pesos?|%|por\s*ciento|km|metros?))\b/gi
-  const regexNombres = /(?:[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s){2,}/g
-
+// Detecta nombres propios de personas e instituciones
+// pero excluye inicios de oración y palabras genéricas
+// Requiere al menos 3 palabras en mayúscula seguidas
+// o 2 palabras donde la segunda sea un apellido típico
+const regexNombres = /(?:[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,}\s){2,}(?:[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,})?/g
   const tieneFechas = regexFechas.test(textoOriginal)
   const tieneCifras = regexCifras.test(textoOriginal)
   const tieneNombres = regexNombres.test(textoOriginal)
+  // Verificamos que los nombres encontrados no sean solo
+// el nombre del medio o palabras genéricas del título
+const nombresEncontrados = textoOriginal.match(regexNombres) ?? []
+const nombresFiltrados = nombresEncontrados.filter(n => {
+  const lower = n.toLowerCase().trim()
+  // Excluimos frases genéricas que no son nombres propios
+  const genericas = ['el presidente', 'la secretaria', 'el gobernador', 'la alcaldesa', 'el director', 'la directora', 'el senador', 'la senadora', 'el diputado', 'la diputada']
+  return !genericas.some(g => lower.startsWith(g))
+})
+const tieneNombresReales = nombresFiltrados.length > 0
   const adjetivosCargados = contar(textoOriginal, ADJETIVOS_CARGADOS)
 
   if (tieneFechas) {
@@ -185,16 +221,31 @@ export function calcularFidelidad(
     signals.push('Incluye datos numéricos')
     evidence['Incluye datos numéricos'] = extraerEvidencia(textoOriginal, [/\b\d+(?:\.\d+)?(?:\s*(?:millones?|miles?|pesos?|%|por\s*ciento|km|metros?))\b/gi])
   }
-  if (tieneNombres) {
+  if (tieneNombresReales) {
     densidad += 7
     signals.push('Menciona personas o instituciones')
-    evidence['Menciona personas o instituciones'] = extraerEvidencia(textoOriginal, [/(?:[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s){2,}/g])
+    evidence['Menciona personas o instituciones'] = nombresFiltrados.slice(0, 3).map(n => n.trim())
+
   }
-  if (adjetivosCargados > 2) {
-    densidad -= 5
-    signals.push('Lenguaje emocionalmente cargado')
-    evidence['Lenguaje emocionalmente cargado'] = extraerEvidencia(textoOriginal, ADJETIVOS_CARGADOS)
-  }
+  // Contamos por separado negativos y positivos para dar
+// feedback más preciso al usuario sobre el tipo de parcialidad
+const ADJETIVOS_NEGATIVOS = [ADJETIVOS_CARGADOS[0], ADJETIVOS_CARGADOS[1], ADJETIVOS_CARGADOS[2]]
+const ADJETIVOS_POSITIVOS_PARCIALES = [ADJETIVOS_CARGADOS[3]]
+
+const negativos = contar(textoOriginal, ADJETIVOS_NEGATIVOS)
+const positivosParciales = contar(textoOriginal, ADJETIVOS_POSITIVOS_PARCIALES)
+
+if (negativos > 2) {
+  densidad -= 5
+  signals.push('Lenguaje emocionalmente cargado')
+  evidence['Lenguaje emocionalmente cargado'] = extraerEvidencia(textoOriginal, ADJETIVOS_NEGATIVOS)
+}
+
+if (positivosParciales >= 1) {
+  densidad -= 4
+  signals.push('Lenguaje favorable sin contraste')
+  evidence['Lenguaje favorable sin contraste'] = extraerEvidencia(textoOriginal, ADJETIVOS_POSITIVOS_PARCIALES)
+}
 
   densidad = Math.max(0, Math.min(densidad, 20))
 
@@ -228,40 +279,82 @@ export function calcularFidelidad(
   const tieneContexto = contar(texto, MARCADORES_CONTEXTO) > 0
 
   if (longitudTexto > 400) {
-    estructura += 5
-    signals.push('Artículo con desarrollo suficiente')
-    evidence['Artículo con desarrollo suficiente'] = [`${longitudTexto} caracteres analizados`]
-  } else if (longitudTexto > 150) {
-    estructura += 2
-  } else {
-    signals.push('Artículo muy breve')
-    evidence['Artículo muy breve'] = [`Solo ${longitudTexto} caracteres`]
-  }
+  estructura += 5
+  signals.push('Artículo con desarrollo suficiente')
+  // Extraemos un fragmento real del inicio del artículo
+  // para mostrar en el hover como evidencia del desarrollo
+  evidence['Artículo con desarrollo suficiente'] = [
+    textoOriginal.slice(0, 120).trim() + '...'
+  ]
+} else if (longitudTexto > 150) {
+  estructura += 2
+} else {
+  signals.push('Artículo muy breve')
+  // Si es muy breve mostramos todo el texto disponible
+  evidence['Artículo muy breve'] = [
+    textoOriginal.trim()
+  ]
+}
 
-  if (tieneContexto) {
-    estructura += 10
-    signals.push('Incluye contexto o antecedentes')
-    evidence['Incluye contexto o antecedentes'] = extraerEvidencia(textoOriginal, MARCADORES_CONTEXTO)
-  }
+if (tieneContexto) {
+  estructura += 10
+  signals.push('Incluye contexto o antecedentes')
+  evidence['Incluye contexto o antecedentes'] = extraerEvidencia(textoOriginal, MARCADORES_CONTEXTO)
+}
+// Detectamos cuántas preguntas básicas responde el artículo
+// Cada una suma 1 punto adicional a estructura (máx 4 extra)
+const tieneQuien = DETECTOR_QUIEN.test(textoOriginal)
+const tieneCuando = DETECTOR_CUANDO.test(textoOriginal)
+const tieneDonde = DETECTOR_DONDE.test(textoOriginal)
+const tieneQue = DETECTOR_QUE.test(textoOriginal)
 
+const preguntasRespondidas = [tieneQuien, tieneCuando, tieneDonde, tieneQue].filter(Boolean).length
+
+if (preguntasRespondidas >= 3) {
+  estructura += 4
+  signals.push('Responde preguntas básicas del periodismo')
+  evidence['Responde preguntas básicas del periodismo'] = [
+    tieneQuien ? '✓ Quién' : '✗ Quién',
+    tieneCuando ? '✓ Cuándo' : '✗ Cuándo',
+    tieneDonde ? '✓ Dónde' : '✗ Dónde',
+    tieneQue ? '✓ Qué/Por qué' : '✗ Qué/Por qué',
+  ]
+} else if (preguntasRespondidas === 2) {
+  estructura += 2
+  signals.push('Responde algunas preguntas básicas')
+  evidence['Responde algunas preguntas básicas'] = [
+    tieneQuien ? '✓ Quién' : '✗ Quién',
+    tieneCuando ? '✓ Cuándo' : '✗ Cuándo',
+    tieneDonde ? '✓ Dónde' : '✗ Dónde',
+    tieneQue ? '✓ Qué/Por qué' : '✗ Qué/Por qué',
+  ]
+}
   estructura = Math.min(estructura, 15)
 
   // ── DIMENSIÓN 5: DIVERSIDAD DE PERSPECTIVAS ─────────────────
   let diversidad = 0
 
   const tieneContraste = contar(textoOriginal, MARCADORES_CONTRASTE)
-  if (tieneContraste >= 2) {
-    diversidad = 10
-    signals.push('Contrasta múltiples perspectivas')
-    evidence['Contrasta múltiples perspectivas'] = extraerEvidencia(textoOriginal, MARCADORES_CONTRASTE)
-  } else if (tieneContraste === 1) {
-    diversidad = 5
-    signals.push('Menciona perspectiva alternativa')
-    evidence['Menciona perspectiva alternativa'] = extraerEvidencia(textoOriginal, MARCADORES_CONTRASTE)
-  } else {
-    signals.push('Sin perspectivas contrastantes')
-    evidence['Sin perspectivas contrastantes'] = []
-  }
+
+
+
+if (tieneContraste >= 2) {
+  diversidad = 10
+  signals.push('Contrasta múltiples perspectivas')
+  evidence['Contrasta múltiples perspectivas'] = extraerEvidencia(textoOriginal, MARCADORES_CONTRASTE)
+} else if (tieneContraste === 1) {
+  diversidad = 7
+  signals.push('Menciona perspectiva alternativa')
+  evidence['Menciona perspectiva alternativa'] = extraerEvidencia(textoOriginal, MARCADORES_CONTRASTE)
+} else {
+  // Base de 5 porque ausencia de contraste no necesariamente
+  // indica mala práctica — algunos géneros periodísticos no
+  // requieren dos versiones. Pero sí penalizamos ligeramente
+  // porque el contraste es un indicador de verificabilidad.
+  diversidad = 5
+  signals.push('Sin perspectivas contrastantes')
+  evidence['Sin perspectivas contrastantes'] = []
+}
 
   const total = Math.round(transparencia + densidad + lenguaje + estructura + diversidad)
 

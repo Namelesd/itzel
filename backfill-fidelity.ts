@@ -25,12 +25,19 @@ import { calcularFidelidad } from './src/lib/fidelity'
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
-
+function limpiarEncoding(texto: string): string {
+  return texto
+    .replace(/\uFFFD/g, '')
+    .replace(/\ufffd/g, '')
+    .replace(/[^\u0000-\u024F\u1E00-\u1EFF\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 async function backfill() {
   // Traemos solo los artículos sin score. Si quieres re-analizar
   // todos (incluyendo los ya analizados), quita el filtro fidelityScore.
   const articulos = await prisma.article.findMany({
-    where: { fidelityScore: null },
+    where: {fidelityScore: null },
     select: { id: true, url: true, title: true, excerpt: true },
     orderBy: { publishedAt: 'desc' },
   })
@@ -58,20 +65,31 @@ async function backfill() {
       }
 
       const resultado = calcularFidelidad(art.title, contenido)
+      const tituloLimpio = limpiarEncoding(art.title)
+      const excerptLimpio = art.excerpt ? limpiarEncoding(art.excerpt) : null
       const aiSignals = JSON.parse(JSON.stringify(resultado.signals))
 
-      await prisma.article.update({
-        where: { id: art.id },
-        data: {
-          fidelityScore: resultado.total,
-          aiAnalyzed: true,
-          aiSignals,
-          content: contenido.slice(0, 5000), // guardamos el contenido para futuras mejoras del algoritmo
-        },
-      })
-
+     await prisma.article.update({
+  where: { id: art.id },
+  data: {
+    title: tituloLimpio,
+    excerpt: excerptLimpio,
+    fidelityScore: resultado.total,
+    aiAnalyzed: true,
+    aiSignals,
+    content: contenido.slice(0, 5000),
+  },
+})
+await prisma.article.update({
+  where: { id: art.id },
+  data: {
+    title: limpiarEncoding(art.title),
+    excerpt: art.excerpt ? limpiarEncoding(art.excerpt) : null,
+  },
+})
       console.log(`  → score: ${resultado.total}/90 ✓\n`)
       actualizados++
+      console.log(`  → score: ${resultado.total}/90 ✓ | título: ${tituloLimpio.slice(0, 50)}\n`)
 
       // Delay entre requests para respetar los servidores de origen
       await delay(800)
@@ -90,5 +108,7 @@ async function backfill() {
 
   await prisma.$disconnect()
 }
-
+// Al terminar el backfill, recalculamos fidelidad de periodistas
+const { execSync } = await import('child_process')
+execSync('npx tsx recalcular-fidelidad-periodistas.ts', { stdio: 'inherit' })
 backfill()

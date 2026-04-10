@@ -167,12 +167,27 @@ export async function extraerContenidoArticulo(url: string): Promise<string | nu
      * del documento y los concatenamos.
      * Menos preciso pero mejor que nada.
      */
-    const parrafos = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) ?? []
-    const textoParrafos = parrafos
-      .map(p => extraerTextoHTML(p))
-      .filter(t => t.length > 50)
-      .join(' ')
-      .slice(0, 3000)
+   const parrafos = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) ?? []
+const textoParrafos = parrafos
+  .map(p => extraerTextoHTML(p))
+  .filter(t => t.length > 50)
+  // Filtramos párrafos que son claramente navegación del sitio
+  // y no contenido periodístico real
+  .filter(t => {
+    const lower = t.toLowerCase()
+    return !lower.includes('anterior') &&
+           !lower.includes('siguiente') &&
+           !lower.includes('comparte') &&
+           !lower.includes('compartir') &&
+           !lower.includes('publicidad') &&
+           !lower.includes('suscríbete') &&
+           !lower.includes('newsletter') &&
+           !lower.includes('más leídas') &&
+           !lower.includes('relacionadas') &&
+           t.split(' ').length > 8
+  })
+  .join(' ')
+  .slice(0, 3000)
 
     if (textoParrafos.length > 200) return textoParrafos
 

@@ -10,8 +10,10 @@
     "scraper": "tsx --tsconfig tsconfig.json scraper/src/sources/animal-politico.ts",
     "fidelity": "tsx recalcular-fidelidad.ts",
     "analyze": "tsx analizar-articulos.ts",
-    "backfill": "tsx backfill-fidelity.ts"
-
+    "backfill": "tsx backfill-fidelity.ts",
+    "postinstall": "prisma generate",
+    "backfill-ubicaciones": "npx tsx backfill-ubicaciones.ts",
+    "recalcular-periodistas": "npx tsx recalcular-fidelidad-periodistas.ts"
 
   },
   "dependencies": {

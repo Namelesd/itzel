@@ -377,6 +377,28 @@ function detectarCategoria(texto: string): string {
  * Paso 3 — Estado exacto o variante/abreviación
  */
 function detectarUbicacion(texto: string) {
+  
+    const patronFormato = /([A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]{2,25}),\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,}\.?)\s/g
+  let matchFormato
+  while ((matchFormato = patronFormato.exec(texto)) !== null) {
+    const ciudad = matchFormato[1].trim()
+    const abrev = matchFormato[2].replace('.', '').trim()
+
+    for (const [municipio, datos] of Object.entries(MUNICIPIOS)) {
+      if (municipio.toLowerCase() === ciudad.toLowerCase() ||
+          (datos.variantes ?? []).some(v => v.toLowerCase() === ciudad.toLowerCase())) {
+        return { municipality: municipio, lat: datos.lat, lng: datos.lng, state: datos.state }
+      }
+    }
+
+    for (const [estado, datos] of Object.entries(ESTADOS)) {
+      const variantes = datos.variantes ?? []
+      if (variantes.some(v => v.replace('.', '').toLowerCase() === abrev.toLowerCase())) {
+        return { municipality: null, lat: datos.lat, lng: datos.lng, state: estado }
+      }
+    }
+  }
+
   /**
    * PASO 1: Municipio exacto o variante
    */
@@ -453,6 +475,8 @@ function limpiarTexto(texto: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
     .replace(/\uFFFD/g, '')
+.replace(/\ufffd/g, '')
+.replace(/[^\u0000-\u024F\u1E00-\u1EFF]/g, '')
     // Corrección de Latin-1 mal interpretado como UTF-8
     .replace(/â€™/g, "'").replace(/â€œ/g, '"').replace(/â€/g, '"')
     .replace(/Ã©/g, 'é').replace(/Ã³/g, 'ó').replace(/Ã­/g, 'í')
@@ -562,8 +586,11 @@ try {
     signal: AbortSignal.timeout(20000),
   })
 
-  const rawText = await response.text()
-const cleanText = rawText
+const contentType = response.headers.get('content-type') ?? ''
+const isLatin1 = /charset=iso-8859-1|charset=latin-1/i.test(contentType)
+
+const buffer = await response.arrayBuffer()
+const rawText = new TextDecoder(isLatin1 ? 'iso-8859-1' : 'utf-8').decode(buffer)const cleanText = rawText
   .replace(/^\uFEFF/, '')
   .replace(/^[\s\S]*?(?=<\?xml|<rss|<feed)/, '')
   // Entidades HTML inválidas → &amp;
@@ -697,10 +724,10 @@ const aiSignals = Array.isArray(fidelityResult?.signals)
   where: { url: item.link },
   update: {
     journalistId,
-    lat: geo.lat,
-    lng: geo.lng,
-    municipality: geo.municipality,
-    state: geo.state,
+    lat: geo.lat ?? null,
+    lng: geo.lng ?? null,
+    municipality: geo.municipality ?? null,
+    state: geo.state ?? null,
     fidelityScore: fidelityResult?.total ?? null,
     aiAnalyzed: !!contenidoCompleto,
     aiSignals,

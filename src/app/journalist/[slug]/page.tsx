@@ -342,42 +342,82 @@ export default async function JournalistPage({ params }: PageProps) {
 
                     {/* DESGLOSE POR DIMENSIÓN */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '6px' }}>
-                      {[
-                        { label: 'Fuentes', value: artBreakdown.transparencia, max: 25 },
-                        { label: 'Densidad factual', value: artBreakdown.densidad, max: 20 },
-                        { label: 'Lenguaje', value: artBreakdown.lenguaje, max: 20 },
-                        { label: 'Estructura', value: artBreakdown.estructura, max: 15 },
-                        { label: 'Perspectivas', value: artBreakdown.diversidad, max: 10 },
-                      ].map(dim => {
-                        const dimPct = Math.round((dim.value / dim.max) * 100)
-                        const dimColor = dimPct >= 70 ? '#3b6d11' : dimPct >= 40 ? '#854f0b' : '#a32d2d'
-                        return (
-                          <div key={dim.label} style={{ padding: '6px 8px', background: '#fafaf8', borderRadius: '8px', border: '0.5px solid #f0ede6' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '11px', color: '#888780' }}>{dim.label}</span>
-                              <span style={{ fontSize: '11px', fontWeight: 500, color: dimColor }}>{dim.value}/{dim.max}</span>
-                            </div>
-                            <div style={{ height: '3px', background: '#f0ede6', borderRadius: '2px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: dimPct + '%', background: dimColor, borderRadius: '2px' }} />
-                            </div>
-                          </div>
-                        )
-                      })}
+                     {[
+  {
+    label: 'Fuentes', value: artBreakdown.transparencia, max: 25,
+    signals: ['Múltiples fuentes nombradas', 'Una fuente nombrada', 'Incluye citas textuales', 'Sin fuentes explícitas'],
+  },
+  {
+    label: 'Densidad factual', value: artBreakdown.densidad, max: 20,
+    signals: ['Incluye fechas', 'Incluye datos numéricos', 'Menciona personas o instituciones', 'Lenguaje emocionalmente cargado'],
+  },
+  {
+    label: 'Lenguaje', value: artBreakdown.lenguaje, max: 20,
+    signals: ['Lenguaje preciso', 'Alto uso de lenguaje ambiguo', 'Lenguaje ambiguo moderado', 'Algo de lenguaje ambiguo'],
+  },
+  {
+    label: 'Estructura', value: artBreakdown.estructura, max: 15,
+    signals: ['Artículo con desarrollo suficiente', 'Incluye contexto o antecedentes', 'Artículo muy breve'],
+  },
+  {
+    label: 'Perspectivas', value: artBreakdown.diversidad, max: 10,
+    signals: ['Contrasta múltiples perspectivas', 'Menciona perspectiva alternativa', 'Sin perspectivas contrastantes'],
+  },
+].map(dim => {
+  const dimPct = Math.round((dim.value / dim.max) * 100)
+  const dimColor = dimPct >= 70 ? '#3b6d11' : dimPct >= 40 ? '#854f0b' : '#a32d2d'
+
+  // Señales de esta dimensión que se detectaron en el artículo
+  const senalesDetectadas = dim.signals.filter(s => artBreakdown.signals.includes(s))
+
+  // Evidencia textual de cada señal detectada
+  const evidencias = senalesDetectadas
+    .flatMap(s => artBreakdown.evidence?.[s] ?? [])
+    .filter(e => e.length > 0)
+    .slice(0, 3)
+
+  // Texto del tooltip: señales + evidencia extraída del artículo
+  const tooltipText = [
+    senalesDetectadas.length > 0
+      ? senalesDetectadas.join(' · ')
+      : 'Sin señales detectadas',
+    evidencias.length > 0
+      ? 'Detectado: ' + evidencias.map(e => '"' + e + '"').join(' · ')
+      : '',
+  ].filter(Boolean).join('\n')
+
+  return (
+    <div
+      key={dim.label}
+      title={tooltipText}
+      style={{ padding: '6px 8px', background: '#fafaf8', borderRadius: '8px', border: '0.5px solid #f0ede6', cursor: 'help' }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+        <span style={{ fontSize: '11px', color: '#888780' }}>{dim.label}</span>
+        <span style={{ fontSize: '11px', fontWeight: 500, color: dimColor }}>{dim.value}/{dim.max}</span>
+      </div>
+      <div style={{ height: '3px', background: '#f0ede6', borderRadius: '2px', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: dimPct + '%', background: dimColor, borderRadius: '2px' }} />
+      </div>
+    </div>
+  )
+})}
                     </div>
 
                     {/* SEÑALES DETECTADAS */}
                     {artBreakdown.signals.length > 0 && (
                       <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                         {artBreakdown.signals.map(signal => {
-                          const isNeg = [
-                            'Sin fuentes explícitas',
-                            'Lenguaje emocionalmente cargado',
-                            'Alto uso de lenguaje ambiguo',
-                            'Lenguaje ambiguo moderado',
-                            'Algo de lenguaje ambiguo',
-                            'Artículo muy breve',
-                            'Sin perspectivas contrastantes',
-                          ].includes(signal)
+                         const isNeg = [
+  'Sin fuentes explícitas',
+  'Lenguaje emocionalmente cargado',
+  'Lenguaje favorable sin contraste',
+  'Alto uso de lenguaje ambiguo',
+  'Lenguaje ambiguo moderado',
+  'Algo de lenguaje ambiguo',
+  'Artículo muy breve',
+  'Sin perspectivas contrastantes',
+].includes(signal)
 
                           /**
                            * EVIDENCIA DE LA SEÑAL

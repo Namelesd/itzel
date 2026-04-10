@@ -9,7 +9,42 @@ function normalizarTexto(texto: string): string {
     .toLowerCase()
     .trim()
 }
-
+// Mapa de versiones normalizadas a versiones con tilde
+// para que PostgreSQL pueda hacer el match correcto
+const ESTADO_NORMALIZADO_A_OFICIAL: Record<string, string> = {
+  'michoacan': 'Michoacán',
+  'nuevo leon': 'Nuevo León',
+  'queretaro': 'Querétaro',
+  'yucatan': 'Yucatán',
+  'jalisco': 'Jalisco',
+  'cdmx': 'CDMX',
+  'ciudad de mexico': 'Ciudad de México',
+  'san luis potosi': 'San Luis Potosí',
+  'baja california': 'Baja California',
+  'baja california sur': 'Baja California Sur',
+  'quintana roo': 'Quintana Roo',
+  'estado de mexico': 'Estado de México',
+  'guanajuato': 'Guanajuato',
+  'chihuahua': 'Chihuahua',
+  'coahuila': 'Coahuila',
+  'tamaulipas': 'Tamaulipas',
+  'veracruz': 'Veracruz',
+  'oaxaca': 'Oaxaca',
+  'chiapas': 'Chiapas',
+  'guerrero': 'Guerrero',
+  'puebla': 'Puebla',
+  'sonora': 'Sonora',
+  'sinaloa': 'Sinaloa',
+  'tabasco': 'Tabasco',
+  'hidalgo': 'Hidalgo',
+  'colima': 'Colima',
+  'nayarit': 'Nayarit',
+  'durango': 'Durango',
+  'zacatecas': 'Zacatecas',
+  'aguascalientes': 'Aguascalientes',
+  'tlaxcala': 'Tlaxcala',
+  'campeche': 'Campeche',
+}
 /**
  * LOCALIDADES CONOCIDAS
  * ---------------------
@@ -79,6 +114,7 @@ export async function searchArticles(params: SearchParams) {
   const localidad = detectarLocalidad(query)
 
   let allArticles: any[]
+const estadoOficial = ESTADO_NORMALIZADO_A_OFICIAL[queryNorm] ?? query
 
   if (localidad) {
     const geoWhere: any = {
@@ -87,11 +123,11 @@ export async function searchArticles(params: SearchParams) {
         media ? { media: { slug: media } } : {},
         {
           OR: [
-            { state: { contains: query, mode: 'insensitive' as const } },
-            { municipality: { contains: query, mode: 'insensitive' as const } },
-            { state: { contains: queryNorm, mode: 'insensitive' as const } },
-            { municipality: { contains: queryNorm, mode: 'insensitive' as const } },
-          ],
+  { state: { contains: estadoOficial, mode: 'insensitive' as const } },
+  { municipality: { contains: estadoOficial, mode: 'insensitive' as const } },
+  { state: { contains: queryNorm, mode: 'insensitive' as const } },
+  { municipality: { contains: queryNorm, mode: 'insensitive' as const } },
+],
         },
       ],
     }

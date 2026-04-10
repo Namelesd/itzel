@@ -1,11 +1,10 @@
 import { searchArticles, getCategories, searchJournalists, } from '@/actions/search'
 import MediaDropdown from '@/components/MediaDropdown'
-
 import ArticleCard from '@/components/ArticleCard'
+import React from 'react'
 
 type PageProps = {
   searchParams: Promise<{ query?: string; category?: string; page?: string; media?: string }>
-
 }
 
 const LABELS: Record<string, string> = {
@@ -28,6 +27,59 @@ export default async function SearchPage({ searchParams }: PageProps) {
     searchArticles({ query, category, page, media }),
     getCategories(),
   ])
+
+  const buildPagination = () => {
+    if (results.pages <= 1) return null
+
+    const pageUrl = (p: number) =>
+      '/search?query=' + query +
+      (category ? '&category=' + category : '') +
+      (media ? '&media=' + media : '') +
+      '&page=' + p
+
+    const btnStyle = (p: number): React.CSSProperties => ({
+      width: '36px', height: '36px', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', borderRadius: '50%', border: '0.5px solid #d3d1c7',
+      textDecoration: 'none', fontSize: '13px',
+      background: p === page ? '#1a1a1e' : '#fff',
+      color: p === page ? '#f5f0e8' : '#5f5e5a',
+    })
+
+    const visible = new Set([
+      1, results.pages,
+      page - 2, page - 1, page, page + 1, page + 2,
+    ])
+
+    const paginas = Array.from(visible)
+      .filter(p => p >= 1 && p <= results.pages)
+      .sort((a, b) => a - b)
+
+    const items: React.ReactNode[] = []
+    let prev = 0
+    for (const p of paginas) {
+      if (prev && p - prev > 1) {
+        items.push(
+          <span key={'ellipsis-' + p} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#888780' }}>…</span>
+        )
+      }
+      items.push(
+        <a key={p} href={pageUrl(p)} style={btnStyle(p)}>{p}</a>
+      )
+      prev = p
+    }
+
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', marginTop: '2rem', flexWrap: 'wrap' }}>
+        {page > 1 && (
+          <a href={pageUrl(page - 1)} style={{ ...btnStyle(page - 1), width: 'auto', padding: '0 12px', fontSize: '12px', color: '#5f5e5a' }}>← Ant</a>
+        )}
+        {items}
+        {page < results.pages && (
+          <a href={pageUrl(page + 1)} style={{ ...btnStyle(page + 1), width: 'auto', padding: '0 12px', fontSize: '12px', color: '#5f5e5a' }}>Sig →</a>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '2rem 1.5rem', minHeight: '100vh', background: '#f5f0e8' }}>
@@ -66,35 +118,32 @@ export default async function SearchPage({ searchParams }: PageProps) {
             : results.total + ' artículos encontrados'}
           {query && <span> para <strong style={{ color: '#1a1a1e' }}>"{query}"</strong></span>}
         </p>
-       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-  <MediaDropdown mediaList={results.mediaList ?? []} query={query} />
-  <a href="/journalist" style={{ fontSize: '12px', color: '#888780', textDecoration: 'none' }}>Periodistas →</a>
-  <a href="/map" style={{ fontSize: '12px', color: '#888780', textDecoration: 'none' }}>Mapa →</a>
-</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <MediaDropdown mediaList={results.mediaList ?? []} query={query} />
+          <a href="/journalist" style={{ fontSize: '12px', color: '#888780', textDecoration: 'none' }}>Periodistas →</a>
+          <a href="/map" style={{ fontSize: '12px', color: '#888780', textDecoration: 'none' }}>Mapa →</a>
+        </div>
       </div>
 
-{media && (
-  <div style={{ background: '#fff', border: '0.5px solid #e0ddd6', borderRadius: '12px', padding: '12px 16px', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f5f0e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 500, color: '#8b7355' }}>
-        {(results.articles[0]?.media.name[0] ?? media[0]).toUpperCase()}
-      </div>
-      <div>
-        <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1e' }}>{results.articles[0]?.media.name ?? media}</p>
-        <p style={{ fontSize: '11px', color: '#888780' }}>{results.total} artículos{query ? ` sobre "${query}"` : ''}</p>
-      </div>
-    </div>
-    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-      {query && (
-        <a href={'/search?media=' + media} style={{ fontSize: '12px', padding: '5px 14px', borderRadius: '20px', border: '0.5px solid #d3d1c7', textDecoration: 'none', color: '#5f5e5a', background: '#fff' }}>Ver todos los artículos de este medio</a>
+      {media && (
+        <div style={{ background: '#fff', border: '0.5px solid #e0ddd6', borderRadius: '12px', padding: '12px 16px', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f5f0e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 500, color: '#8b7355' }}>
+              {(results.articles[0]?.media.name[0] ?? media[0]).toUpperCase()}
+            </div>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1e' }}>{results.articles[0]?.media.name ?? media}</p>
+              <p style={{ fontSize: '11px', color: '#888780' }}>{results.total} artículos{query ? ` sobre "${query}"` : ''}</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {query && (
+              <a href={'/search?media=' + media} style={{ fontSize: '12px', padding: '5px 14px', borderRadius: '20px', border: '0.5px solid #d3d1c7', textDecoration: 'none', color: '#5f5e5a', background: '#fff' }}>Ver todos los artículos de este medio</a>
+            )}
+            <a href={query ? '/search?query=' + query : '/search'} style={{ fontSize: '12px', padding: '5px 14px', borderRadius: '20px', border: '0.5px solid #a32d2d', textDecoration: 'none', color: '#a32d2d', background: '#fcebeb' }}>× Quitar filtro</a>
+          </div>
+        </div>
       )}
-      <a href={query ? '/search?query=' + query : '/search'} style={{ fontSize: '12px', padding: '5px 14px', borderRadius: '20px', border: '0.5px solid #a32d2d', textDecoration: 'none', color: '#a32d2d', background: '#fcebeb' }}>× Quitar filtro</a>
-    </div>
-  </div>
-)}
-
-
-
 
       {results.articles.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '4rem 0', color: '#888780' }}>
@@ -109,13 +158,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {results.pages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '2rem' }}>
-          {Array.from({ length: results.pages }, (_, i) => i + 1).map(p => (
-            <a key={p} href={'/search?query=' + query + (category ? '&category=' + category : '') + '&page=' + p} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: '0.5px solid #d3d1c7', textDecoration: 'none', fontSize: '13px', background: p === page ? '#1a1a1e' : '#fff', color: p === page ? '#f5f0e8' : '#5f5e5a' }}>{p}</a>
-          ))}
-        </div>
-      )}
+      {buildPagination()}
 
     </div>
   )
