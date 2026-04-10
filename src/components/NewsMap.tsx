@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { calcularFidelidad } from '@/lib/fidelity'
 
 type ArticlePin = {
   id: string
@@ -12,10 +13,15 @@ type ArticlePin = {
   lat: number
   lng: number
   mediaName: string
+  excerpt: string | null
+  fidelityScore: number | null
+  journalistName: string | null
+  journalistSlug: string | null
 }
 
 type Props = {
   articles: ArticlePin[]
+  sinUbicacion: ArticlePin[]
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -36,30 +42,155 @@ const CATEGORY_LABELS: Record<string, string> = {
   civil: 'Civil',
 }
 
-/**
- * JITTER — dispersión aleatoria de coordenadas
- * ---------------------------------------------
- * Cuando múltiples artículos tienen exactamente las mismas
- * coordenadas (ej: 20 artículos de CDMX), todos se apilan
- * en un punto y solo se ve uno.
- *
- * Solución: agregar una pequeña variación aleatoria (~500m)
- * a cada coordenada para que los pins se separen visualmente.
- *
- * 0.005 grados ≈ 500 metros — suficiente para verlos separados
- * pero tan pequeño que no distorsiona la ubicación real.
- */
+const DIM_CONFIGS = [
+  { label: 'Fuentes', key: 'transparencia' as const, max: 25, signals: ['Múltiples fuentes nombradas', 'Una fuente nombrada', 'Incluye citas textuales', 'Sin fuentes explícitas'] },
+  { label: 'Densidad', key: 'densidad' as const, max: 20, signals: ['Incluye fechas', 'Incluye datos numéricos', 'Menciona personas o instituciones', 'Lenguaje emocionalmente cargado'] },
+  { label: 'Lenguaje', key: 'lenguaje' as const, max: 20, signals: ['Lenguaje preciso', 'Alto uso de lenguaje ambiguo', 'Lenguaje ambiguo moderado', 'Algo de lenguaje ambiguo'] },
+  { label: 'Estructura', key: 'estructura' as const, max: 15, signals: ['Artículo con desarrollo suficiente', 'Incluye contexto o antecedentes', 'Artículo muy breve'] },
+  { label: 'Perspectivas', key: 'diversidad' as const, max: 10, signals: ['Contrasta múltiples perspectivas', 'Menciona perspectiva alternativa', 'Sin perspectivas contrastantes'] },
+]
+
+const NEG_SIGNALS = new Set([
+  'Sin fuentes explícitas', 'Lenguaje emocionalmente cargado',
+  'Lenguaje favorable sin contraste', 'Alto uso de lenguaje ambiguo',
+  'Lenguaje ambiguo moderado', 'Algo de lenguaje ambiguo',
+  'Artículo muy breve', 'Sin perspectivas contrastantes',
+])
+
+function getFidelityColor(score: number): string {
+  if (score >= 70) return '#3b6d11'
+  if (score >= 40) return '#854f0b'
+  return '#a32d2d'
+}
+
+function getFidelityBg(score: number): string {
+  if (score >= 70) return '#eaf3de'
+  if (score >= 40) return '#faeeda'
+  return '#fcebeb'
+}
+
+function getFidelityLabel(score: number): string {
+  if (score >= 80) return 'Muy alta'
+  if (score >= 60) return 'Alta'
+  if (score >= 40) return 'Media'
+  if (score >= 20) return 'Baja'
+  return 'Sin datos'
+}
+
 function jitter(value: number): number {
   return value + (Math.random() - 0.5) * 0.008
 }
 
-export default function NewsMap({ articles }: Props) {
+function ArticleFidelityCard({ article }: { article: ArticlePin }) {
+  const score = article.fidelityScore
+  const textoTotal = article.title + ' ' + (article.excerpt ?? '')
+  const breakdown = textoTotal.length > 80
+    ? calcularFidelidad(article.title, article.excerpt)
+    : null
+
+  return (
+    <div style={{ padding: '0.75rem', borderBottom: '0.5px solid #f0ede6', marginBottom: '4px' }}>
+
+      {/* HEADER */}
+      <div style={{ fontSize: '10px', color: '#888780', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+        {article.mediaName} · {CATEGORY_LABELS[article.category] ?? article.category}
+        
+      </div>
+
+      {/* TÍTULO */}
+      <a href={article.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1e', textDecoration: 'none', lineHeight: '1.4', display: 'block', marginBottom: '6px' }}>
+        {article.title}
+      </a>
+
+      {/* PERIODISTA */}
+      {article.journalistName && (
+        <p style={{ fontSize: '11px', color: '#888780', marginBottom: '8px' }}>
+          Por{' '}
+          <a href={'/journalist/' + article.journalistSlug} style={{ color: '#5f5e5a', textDecoration: 'none', fontWeight: 500 }}>
+            {article.journalistName}
+          </a>
+        </p>
+      )}
+
+      {/* BADGE DE FIDELIDAD */}
+      {score != null ? (
+        <div style={{ marginBottom: '8px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 10px', borderRadius: '20px', background: getFidelityBg(score), color: getFidelityColor(score), display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: getFidelityColor(score), display: 'inline-block' }} />
+            {'Fidelidad ' + Math.round(score) + '/90 · ' + getFidelityLabel(score)}
+          </span>
+        </div>
+      ) : (
+        <div style={{ marginBottom: '8px' }}>
+          <span style={{ fontSize: '11px', padding: '2px 10px', borderRadius: '20px', background: '#f0ede6', color: '#aaa89f', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#d3d1c7', display: 'inline-block' }} />
+            Pendiente de análisis
+          </span>
+        </div>
+      )}
+
+      {/* DESGLOSE POR DIMENSIÓN */}
+      {breakdown && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', marginBottom: '6px' }}>
+            {DIM_CONFIGS.map(dim => {
+              const value = breakdown[dim.key]
+              const pct = Math.round((value / dim.max) * 100)
+              const dimColor = pct >= 70 ? '#3b6d11' : pct >= 40 ? '#854f0b' : '#a32d2d'
+              const senalesDetectadas = dim.signals.filter(s => breakdown.signals.includes(s))
+              const evidencias = senalesDetectadas.flatMap(s => breakdown.evidence?.[s] ?? []).slice(0, 2)
+              const tooltipText = [
+                senalesDetectadas.length > 0 ? senalesDetectadas.join(' · ') : 'Sin señales',
+                evidencias.length > 0 ? 'Detectado: ' + evidencias.map(e => '"' + e + '"').join(' · ') : '',
+              ].filter(Boolean).join('\n')
+
+              return (
+                <div
+                  key={dim.label}
+                  title={tooltipText}
+                  style={{ padding: '4px 6px', background: '#fafaf8', borderRadius: '6px', border: '0.5px solid #f0ede6', cursor: 'help' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                    <span style={{ fontSize: '9px', color: '#888780' }}>{dim.label}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 500, color: dimColor }}>{value}/{dim.max}</span>
+                  </div>
+                  <div style={{ height: '2px', background: '#f0ede6', borderRadius: '1px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: pct + '%', background: dimColor, borderRadius: '1px' }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* SEÑALES */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {breakdown.signals.map(signal => (
+              <span
+                key={signal}
+                style={{
+                  fontSize: '10px', padding: '1px 7px', borderRadius: '20px',
+                  background: NEG_SIGNALS.has(signal) ? '#fcebeb' : '#eaf3de',
+                  color: NEG_SIGNALS.has(signal) ? '#a32d2d' : '#3b6d11',
+                }}
+              >
+                {signal}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+export default function NewsMap({ articles, sinUbicacion  }: Props) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [selectedArticles, setSelectedArticles] = useState<ArticlePin[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
+  const [sinUbicacionOpen, setSinUbicacionOpen] = useState(false)
 
   useEffect(() => {
     if (!mapRef.current) return
@@ -104,13 +235,6 @@ export default function NewsMap({ articles }: Props) {
 
     const filtered = category ? pins.filter(p => p.category === category) : pins
 
-    /**
-     * AGRUPAR POR UBICACIÓN
-     * ---------------------
-     * Agrupamos artículos que tienen exactamente las mismas
-     * coordenadas antes de aplicar el jitter.
-     * Así sabemos cuántos hay en cada punto para mostrar el número.
-     */
     const groups: Record<string, ArticlePin[]> = {}
     filtered.forEach(article => {
       const key = article.lat.toFixed(4) + ',' + article.lng.toFixed(4)
@@ -127,45 +251,24 @@ export default function NewsMap({ articles }: Props) {
         const el = document.createElement('div')
 
         if (group.length > 1 && index === 0) {
-          /**
-           * PIN CON NÚMERO — para el primer artículo del grupo
-           * Muestra cuántos artículos hay en esa ubicación.
-           */
           el.style.cssText = 'width:24px;height:24px;border-radius:50%;background:' + color + ';border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:white;font-family:sans-serif;'
           el.textContent = String(group.length)
-
           el.addEventListener('click', () => {
             setSelectedArticles(group)
             setPanelOpen(true)
+            setSinUbicacionOpen(false)
           })
-
-          new mapboxgl.Marker(el)
-            .setLngLat([lng, lat])
-            .addTo(map)
+          new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map)
           markersRef.current.push({ remove: () => el.remove() })
         } else if (group.length === 1) {
-          /**
-           * PIN SIMPLE — artículo único en esa ubicación
-           * Muestra popup directo al hacer click.
-           */
           el.style.cssText = 'width:12px;height:12px;border-radius:50%;background:' + color + ';border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;'
-
-          const locationHtml = article.municipality
-            ? '<div style="font-size:11px;color:#888780;margin-top:4px;">' + article.municipality + (article.state ? ', ' + article.state : '') + '</div>'
-            : article.state
-            ? '<div style="font-size:11px;color:#888780;margin-top:4px;">' + article.state + '</div>'
-            : ''
-
-          const popup = new mapboxgl.Popup({ offset: 10, maxWidth: '280px' }).setHTML(
-            '<div style="font-family:sans-serif;padding:4px 0;">' +
-            '<div style="font-size:10px;color:#888780;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">' + article.mediaName + ' · ' + (CATEGORY_LABELS[article.category] ?? article.category) + '</div>' +
-            '<a href="' + article.url + '" target="_blank" rel="noopener noreferrer" style="font-size:13px;font-weight:500;color:#1a1a1e;text-decoration:none;line-height:1.4;display:block;">' + article.title + '</a>' +
-            locationHtml +
-            '</div>'
-          )
-
-          const marker = new mapboxgl.Marker(el).setLngLat([lng, lat]).setPopup(popup).addTo(map)
-          markersRef.current.push(marker)
+          el.addEventListener('click', () => {
+            setSelectedArticles([article])
+            setPanelOpen(true)
+            setSinUbicacionOpen(false)
+          })
+          new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map)
+          markersRef.current.push({ remove: () => el.remove() })
         }
       })
     })
@@ -192,40 +295,84 @@ export default function NewsMap({ articles }: Props) {
             <button key={cat} onClick={() => setActiveCategory(activeCategory === cat ? null : cat)} style={{ ...btnBase, border: '0.5px solid ' + CATEGORY_COLORS[cat], background: activeCategory === cat ? CATEGORY_COLORS[cat] : '#fff', color: activeCategory === cat ? '#fff' : CATEGORY_COLORS[cat] }}>
               {CATEGORY_LABELS[cat]}
             </button>
+            
           ))}
+          <button
+  onClick={() => {
+    setSinUbicacionOpen(true)
+    setPanelOpen(false)
+  }}
+  style={{
+    ...btnBase,
+    background: sinUbicacionOpen ? '#1a1a1e' : '#fff',
+    color: sinUbicacionOpen ? '#f5f0e8' : '#5f5e5a',
+    display: 'flex', alignItems: 'center', gap: '6px',
+  }}
+>
+  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sinUbicacionOpen ? '#f5f0e8' : '#888780', display: 'inline-block' }} />
+  Sin ubicación ({sinUbicacion.length})
+</button>
         </div>
       </div>
 
       <div style={{ flex: 1, position: 'relative' }}>
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
 
-        {/* PANEL LATERAL — lista de artículos del grupo */}
+        {/* PANEL LATERAL */}
         {panelOpen && selectedArticles.length > 0 && (
-          <div style={{ position: 'absolute', top: 0, right: 0, width: '320px', height: '100%', background: '#fff', borderLeft: '0.5px solid #e0ddd6', overflowY: 'auto', zIndex: 10 }}>
-            <div style={{ padding: '1rem', borderBottom: '0.5px solid #e0ddd6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ position: 'absolute', top: 0, right: 0, width: '360px', height: '100%', background: '#fff', borderLeft: '0.5px solid #e0ddd6', overflowY: 'auto', zIndex: 10 }}>
+            <div style={{ padding: '1rem', borderBottom: '0.5px solid #e0ddd6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1e' }}>
                   {selectedArticles[0].municipality || selectedArticles[0].state || 'Sin ubicación'}
                 </p>
-                <p style={{ fontSize: '11px', color: '#888780' }}>{selectedArticles.length} noticias</p>
+                <p style={{ fontSize: '11px', color: '#888780' }}>{selectedArticles.length} {selectedArticles.length === 1 ? 'noticia' : 'noticias'}</p>
               </div>
-              <button onClick={() => setPanelOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '18px', color: '#888780', lineHeight: 1 }}>×</button>
+              <button onClick={() => setPanelOpen(false)} style={{ border: 'none', background: '#f5f0e8', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '16px', color: '#5f5e5a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
 
-            <div style={{ padding: '0.75rem' }}>
+            <div style={{ padding: '0.5rem' }}>
               {selectedArticles.map(article => (
-                <div key={article.id} style={{ padding: '0.75rem', borderBottom: '0.5px solid #f0ede6', marginBottom: '4px' }}>
-                  <div style={{ fontSize: '10px', color: '#888780', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
-                    {article.mediaName} · {CATEGORY_LABELS[article.category] ?? article.category}
-                  </div>
-                  <a href={article.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1e', textDecoration: 'none', lineHeight: '1.4', display: 'block' }}>
-                    {article.title}
-                  </a>
-                </div>
+                <ArticleFidelityCard key={article.id} article={article} />
               ))}
             </div>
           </div>
         )}
+        {/* PANEL SIN UBICACIÓN */}
+{sinUbicacionOpen && (
+  <div style={{
+    position: 'absolute', top: 0, right: 0, width: '360px', height: '100%',
+    background: '#fff', borderLeft: '0.5px solid #e0ddd6',
+    overflowY: 'auto', zIndex: 10,
+  }}>
+    <div style={{
+      padding: '1rem', borderBottom: '0.5px solid #e0ddd6',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      position: 'sticky', top: 0, background: '#fff', zIndex: 1,
+    }}>
+      <div>
+        <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1e' }}>Sin ubicación detectada</p>
+        <p style={{ fontSize: '11px', color: '#888780' }}>{sinUbicacion.length} noticias</p>
+      </div>
+      <button
+        onClick={() => setSinUbicacionOpen(false)}
+        style={{ border: 'none', background: '#f5f0e8', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '16px', color: '#5f5e5a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >×</button>
+    </div>
+
+    <div style={{ padding: '4px 8px 8px', background: '#fafaf8', margin: '8px', borderRadius: '8px', border: '0.5px solid #f0ede6' }}>
+      <p style={{ fontSize: '11px', color: '#888780', padding: '6px 4px' }}>
+        Estas noticias no tienen municipio o estado identificado — pueden ser cobertura internacional o artículos donde el lugar no se menciona explícitamente.
+      </p>
+    </div>
+
+    <div style={{ padding: '0.5rem' }}>
+      {sinUbicacion.map(article => (
+        <ArticleFidelityCard key={article.id} article={article} />
+      ))}
+    </div>
+  </div>
+)}
       </div>
 
     </div>

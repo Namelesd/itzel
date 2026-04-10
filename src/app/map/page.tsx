@@ -1,32 +1,7 @@
-    /**
- * PÁGINA: /map
- * ============================================================
- * Server Component que trae los artículos con coordenadas
- * y los pasa al Client Component NewsMap.
- *
- * Por qué separamos Server y Client:
- * - El Server Component accede a Prisma (base de datos)
- * - El Client Component accede a Mapbox (navegador)
- * - No pueden mezclarse en el mismo archivo
- *
- * where: { lat: { not: null } } — solo artículos con
- * coordenadas detectadas. Los que no tienen municipio
- * identificado no aparecen en el mapa.
- * ============================================================
- */
-
 import { prisma } from '@/lib/prisma'
 import NewsMap from '@/components/NewsMap'
 
 export default async function MapPage() {
-  /**
-   * Traemos solo los artículos que tienen coordenadas.
-   * select: traemos únicamente los campos que necesita el mapa
-   * para no mandar datos innecesarios al cliente.
-   *
-   * take: 500 — límite de pins para que el mapa no se vuelva lento.
-   * En Fase 2 implementaremos clustering para manejar miles de pins.
-   */
   const articles = await prisma.article.findMany({
     where: {
       lat: { not: null },
@@ -41,21 +16,39 @@ export default async function MapPage() {
       state: true,
       lat: true,
       lng: true,
-      media: {
-        select: { name: true },
-      },
+      excerpt: true,
+      fidelityScore: true,
+      media: { select: { name: true } },
+      journalist: { select: { name: true, slug: true } },
     },
     orderBy: { publishedAt: 'desc' },
     take: 500,
   })
 
-  /**
-   * Transformamos los datos para el componente.
-   * Aplanamos el objeto media para que sea más fácil de usar.
-   * filter(Boolean) elimina los null de lat/lng — TypeScript
-   * no sabe que ya filtramos con where, así que lo hacemos
-   * explícito para evitar errores de tipos.
-   */
+  // Segunda query — artículos sin coordenadas
+  const sinUbicacion = await prisma.article.findMany({
+    where: {
+      OR: [
+        { lat: null },
+        { lng: null },
+      ],
+    },
+    select: {
+      id: true,
+      title: true,
+      url: true,
+      category: true,
+      municipality: true,
+      state: true,
+      excerpt: true,
+      fidelityScore: true,
+      media: { select: { name: true } },
+      journalist: { select: { name: true, slug: true } },
+    },
+    orderBy: { publishedAt: 'desc' },
+    take: 300,
+  })
+
   const pins = articles
     .filter(a => a.lat !== null && a.lng !== null)
     .map(a => ({
@@ -68,7 +61,27 @@ export default async function MapPage() {
       lat: a.lat as number,
       lng: a.lng as number,
       mediaName: a.media.name,
+      excerpt: a.excerpt,
+      fidelityScore: a.fidelityScore,
+      journalistName: a.journalist?.name ?? null,
+      journalistSlug: a.journalist?.slug ?? null,
     }))
 
-  return <NewsMap articles={pins} />
+  const sinUbicacionPins = sinUbicacion.map(a => ({
+    id: a.id,
+    title: a.title,
+    url: a.url,
+    category: a.category,
+    municipality: a.municipality,
+    state: a.state,
+    lat: 0,
+    lng: 0,
+    mediaName: a.media.name,
+    excerpt: a.excerpt,
+    fidelityScore: a.fidelityScore,
+    journalistName: a.journalist?.name ?? null,
+    journalistSlug: a.journalist?.slug ?? null,
+  }))
+
+  return <NewsMap articles={pins} sinUbicacion={sinUbicacionPins} />
 }
